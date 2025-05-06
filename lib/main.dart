@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'core/config/env_config.dart';
 import 'core/theme/app_theme.dart';
-import 'data/datasources/movie_api_client.dart';
-import 'data/datasources/user_preferences.dart';
-import 'data/repositories/movie_repository_impl.dart';
-import 'domain/repositories/movie_repository.dart';
-import 'presentation/pages/splash_screen.dart';
-import 'presentation/stores/movie_store.dart';
-import 'presentation/stores/user_store.dart';
+import 'Model/datasources/movie_api_client.dart';
+import 'Model/datasources/user_preferences.dart';
+import 'Model/repositories/movie_repository_impl.dart';
+import 'Model/repositories/movie_repository.dart';
+import 'View/pages/splash_screen.dart';
+import 'ViewModel/stores/movie_store.dart';
+import 'ViewModel/stores/user_store.dart';
 
 // Get instance of service locator
 final GetIt getIt = GetIt.instance;
