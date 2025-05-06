@@ -4,8 +4,8 @@ import 'package:get_it/get_it.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../Model/entities/movie.dart';
-import '../stores/movie_store.dart';
-import '../stores/user_store.dart';
+import '../../ViewModel/stores/movie_store.dart';
+import '../../ViewModel/stores/user_store.dart';
 import '../widgets/genre_chip.dart';
 import '../widgets/movie_card.dart';
 

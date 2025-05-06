@@ -3,7 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../stores/user_store.dart';
+import '../../../ViewModel/stores/user_store.dart';
 import '../../widgets/custom_button.dart';
 import '../main_screen.dart';
 
