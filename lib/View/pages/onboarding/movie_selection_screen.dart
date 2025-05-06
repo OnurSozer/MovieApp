@@ -393,6 +393,7 @@ class MoviePairCarousel extends StatelessWidget {
     return Observer(
       builder: (_) {
         final isSelected = userStore.favoriteMovieIds.contains(movie.id);
+        final screenHeight = MediaQuery.of(context).size.height;
         
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -412,107 +413,15 @@ class MoviePairCarousel extends StatelessWidget {
               )
             ] : [],
           ),
-          child: Stack(
-            children: [
-              // Use the existing MovieCard component
-              MovieCard(
-                movie: movie,
-                isSelected: isSelected,
-                onTap: (_) => onToggleSelection(movie),
-                showTitle: false,
-              ),
-              
-              // Add curved edge overlay for where cards meet
-              if (isLeftCard)
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  right: 0,
-                  width: 20, // Width of the curved edge
-                  child: ClipPath(
-                    clipper: RightCurveClipper(),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.5),
-                            Colors.black,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  left: 0,
-                  width: 20, // Width of the curved edge
-                  child: ClipPath(
-                    clipper: LeftCurveClipper(),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.5),
-                            Colors.black,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          height: screenHeight / 3,
+          child: MovieCard(
+            movie: movie,
+            isSelected: isSelected,
+            onTap: (_) => onToggleSelection(movie),
+            showTitle: false,
           ),
         );
       },
     );
   }
-}
-
-// Custom clipper for right edge of left card
-class RightCurveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(size.width * 0.7, 0);
-    path.quadraticBezierTo(
-      size.width, size.height * 0.5, 
-      size.width * 0.7, size.height
-    );
-    path.lineTo(0, size.height);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-// Custom clipper for left edge of right card
-class LeftCurveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(size.width, 0);
-    path.lineTo(size.width * 0.3, 0);
-    path.quadraticBezierTo(
-      0, size.height * 0.5, 
-      size.width * 0.3, size.height
-    );
-    path.lineTo(size.width, size.height);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 } 
