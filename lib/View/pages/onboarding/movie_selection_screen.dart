@@ -22,10 +22,7 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
   late MovieStore _movieStore;
   late UserStore _userStore;
   final ScrollController _scrollController = ScrollController();
-  final PageController _pageController = PageController(
-    viewportFraction: 0.5,
-    initialPage: 0,
-  );
+  final PageController _pageController = PageController();
   bool _isLoadingMore = false;
   
   // Required number of favorite movies
@@ -102,8 +99,11 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
       return;
     }
     
-    // Otherwise toggle as normal
+    // Using MobX action to toggle favorite movie
     _userStore.toggleFavoriteMovie(movie);
+    
+    // Debug print to see selection changes
+    print('Movie ${movie.id} selection toggled. Current favorites: ${_userStore.favoriteMovieIds}');
   }
 
   void _navigateToNextScreen() {
@@ -193,7 +193,7 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
             
             const SizedBox(height: 24),
             
-            // Curved carousel of movies
+            // Movie pair carousel
             Expanded(
               child: Observer(
                 builder: (_) {
@@ -255,7 +255,18 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
                   return Column(
                     children: [
                       Expanded(
-                        child: _buildCurvedCarousel(movies),
+                        child: MoviePairCarousel(
+                          movies: movies, 
+                          pageController: _pageController,
+                          onLoadMore: () {
+                            if (!_isLoadingMore && !_movieStore.isLoading) {
+                              _loadMoreMovies();
+                            }
+                          },
+                          onToggleSelection: _toggleMovieSelection,
+                          userStore: _userStore,
+                          isLoadingMore: _isLoadingMore,
+                        ),
                       ),
                       
                       // Show loading indicator at bottom for additional feedback
@@ -304,77 +315,204 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
       ),
     );
   }
-  
-  // Custom curved carousel widget
-  Widget _buildCurvedCarousel(List<Movie> movies) {
+}
+
+// MoviePairCarousel is an object-oriented class that handles displaying pairs of movies
+class MoviePairCarousel extends StatelessWidget {
+  final List<Movie> movies;
+  final PageController pageController;
+  final VoidCallback onLoadMore;
+  final Function(Movie) onToggleSelection;
+  final UserStore userStore;
+  final bool isLoadingMore;
+
+  const MoviePairCarousel({
+    Key? key,
+    required this.movies,
+    required this.pageController,
+    required this.onLoadMore,
+    required this.onToggleSelection,
+    required this.userStore,
+    required this.isLoadingMore,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Calculate the number of pairs (each page shows a unique pair)
+    // We subtract 1 from the length to ensure we always have pairs
+    final int pairCount = (movies.length / 2).floor();
+    
     return PageView.builder(
-      controller: _pageController,
-      scrollDirection: Axis.horizontal,
-      itemCount: movies.length + (_isLoadingMore ? 1 : 0),
+      controller: pageController,
+      itemCount: pairCount,
       onPageChanged: (index) {
-        if (index >= movies.length - 5 && !_isLoadingMore && !_movieStore.isLoading) {
-          _loadMoreMovies();
+        // Load more when approaching the end
+        if (index >= pairCount - 3) {
+          onLoadMore();
         }
       },
       itemBuilder: (context, index) {
-        // If we're at the end and loading more, show a loading indicator
-        if (index == movies.length && _isLoadingMore) {
+        // Calculate the correct indices for each pair
+        // Each page shows a unique pair (no repeats)
+        final leftIndex = index * 2;
+        final rightIndex = leftIndex + 1;
+        
+        // Ensure we don't go out of bounds
+        if (rightIndex < movies.length) {
+          final leftMovie = movies[leftIndex];
+          final rightMovie = movies[rightIndex];
+          
+          return _buildMoviePair(context, leftMovie, rightMovie);
+        } else {
           return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(
-                color: AppColors.redLight,
-              ),
-            ),
+            child: CircularProgressIndicator(),
           );
         }
+      },
+    );
+  }
+
+  Widget _buildMoviePair(BuildContext context, Movie leftMovie, Movie rightMovie) {
+    return Row(
+      children: [
+        // Left movie card
+        Expanded(
+          child: _buildMovieCard(context, leftMovie, true),
+        ),
         
-        // Get movie at current index
-        final movie = movies[index];
+        // Right movie card
+        Expanded(
+          child: _buildMovieCard(context, rightMovie, false),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMovieCard(BuildContext context, Movie movie, bool isLeftCard) {
+    // Use Observer here to make sure the widget rebuilds when favoriteMovieIds changes
+    return Observer(
+      builder: (_) {
+        final isSelected = userStore.favoriteMovieIds.contains(movie.id);
         
-        // Build carousel item with curved effect
-        return AnimatedBuilder(
-          animation: _pageController,
-          builder: (context, child) {
-            double value = 1.0;
-            
-            // Calculate the visible percentage of each item
-            if (_pageController.position.haveDimensions) {
-              value = _pageController.page! - index;
-              
-              // Scale value between 0.8 and 1
-              value = (1 - (value.abs() * 0.3)).clamp(0.8, 1.0);
-              
-              // Apply curve for cylinder effect
-              // Items will get smaller and appear to curve away
-              double heightFactor = math.sin(value * math.pi / 2);
-              value = heightFactor;
-            }
-            
-            return Center(
-              child: SizedBox(
-                height: Curves.easeOut.transform(value) * 400,
-                width: Curves.easeOut.transform(value) * 220,
-                child: child,
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: EdgeInsets.only(
+            left: isLeftCard ? 16.0 : 8.0,
+            right: isLeftCard ? 8.0 : 16.0,
+            top: 20.0,
+            bottom: 20.0,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isSelected ? [
+              BoxShadow(
+                color: Colors.redAccent.withOpacity(0.5),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ] : [],
+          ),
+          child: Stack(
+            children: [
+              // Use the existing MovieCard component
+              MovieCard(
+                movie: movie,
+                isSelected: isSelected,
+                onTap: (_) => onToggleSelection(movie),
+                showTitle: false,
               ),
-            );
-          },
-          child: Observer(
-            builder: (_) {
-              final isSelected = _userStore.favoriteMovieIds.contains(movie.id);
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                child: MovieCard(
-                  movie: movie,
-                  isSelected: isSelected,
-                  onTap: (_) => _toggleMovieSelection(movie),
-                  showTitle: false,
+              
+              // Add curved edge overlay for where cards meet
+              if (isLeftCard)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: 20, // Width of the curved edge
+                  child: ClipPath(
+                    clipper: RightCurveClipper(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.5),
+                            Colors.black,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: 20, // Width of the curved edge
+                  child: ClipPath(
+                    clipper: LeftCurveClipper(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.5),
+                            Colors.black,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              );
-            },
+            ],
           ),
         );
       },
     );
   }
+}
+
+// Custom clipper for right edge of left card
+class RightCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width * 0.7, 0);
+    path.quadraticBezierTo(
+      size.width, size.height * 0.5, 
+      size.width * 0.7, size.height
+    );
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+// Custom clipper for left edge of right card
+class LeftCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(size.width, 0);
+    path.lineTo(size.width * 0.3, 0);
+    path.quadraticBezierTo(
+      0, size.height * 0.5, 
+      size.width * 0.3, size.height
+    );
+    path.lineTo(size.width, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 } 
