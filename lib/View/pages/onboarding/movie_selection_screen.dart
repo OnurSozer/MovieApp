@@ -21,8 +21,6 @@ class MovieSelectionScreen extends StatefulWidget {
 class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
   late MovieStore _movieStore;
   late UserStore _userStore;
-  final ScrollController _scrollController = ScrollController();
-  final PageController _pageController = PageController();
   bool _isLoadingMore = false;
   
   // Required number of favorite movies
@@ -36,9 +34,6 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
     _movieStore = GetIt.instance<MovieStore>();
     _userStore = GetIt.instance<UserStore>();
     
-    // Add scroll listener for infinite scrolling
-    _scrollController.addListener(_onScroll);
-    
     // Fetch popular movies if needed (may already be loaded from splash screen)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_movieStore.popularMovies.isEmpty) {
@@ -49,23 +44,7 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
   
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    _pageController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    // Dynamic image preloading
-    _movieStore.preloadNextBatchOnScroll(context, _scrollController);
-    
-    // Load more movies when reaching the end (infinite scrolling)
-    if (_scrollController.position.pixels >= 
-        _scrollController.position.maxScrollExtent * 0.8 &&
-        !_isLoadingMore &&
-        !_movieStore.isLoading) {
-      _loadMoreMovies();
-    }
   }
 
   Future<void> _fetchInitialMovies() async {
@@ -73,6 +52,8 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
   }
   
   Future<void> _loadMoreMovies() async {
+    if (_isLoadingMore || _movieStore.isLoading) return;
+    
     setState(() {
       _isLoadingMore = true;
     });
@@ -193,7 +174,7 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
             
             const SizedBox(height: 24),
             
-            // Movie pair carousel
+            // Horizontally scrollable movie pairs
             Expanded(
               child: Observer(
                 builder: (_) {
@@ -255,17 +236,11 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
                   return Column(
                     children: [
                       Expanded(
-                        child: MoviePairCarousel(
-                          movies: movies, 
-                          pageController: _pageController,
-                          onLoadMore: () {
-                            if (!_isLoadingMore && !_movieStore.isLoading) {
-                              _loadMoreMovies();
-                            }
-                          },
+                        child: HorizontalMovieScroller(
+                          movies: movies,
                           onToggleSelection: _toggleMovieSelection,
                           userStore: _userStore,
-                          isLoadingMore: _isLoadingMore,
+                          onLoadMore: _loadMoreMovies,
                         ),
                       ),
                       
@@ -317,74 +292,109 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
   }
 }
 
-// MoviePairCarousel is an object-oriented class that handles displaying pairs of movies
-class MoviePairCarousel extends StatelessWidget {
+// HorizontalMovieScroller is an object-oriented class that handles displaying horizontally scrollable movie pairs
+class HorizontalMovieScroller extends StatefulWidget {
   final List<Movie> movies;
-  final PageController pageController;
-  final VoidCallback onLoadMore;
   final Function(Movie) onToggleSelection;
   final UserStore userStore;
-  final bool isLoadingMore;
+  final VoidCallback? onLoadMore;
 
-  const MoviePairCarousel({
+  const HorizontalMovieScroller({
     Key? key,
     required this.movies,
-    required this.pageController,
-    required this.onLoadMore,
     required this.onToggleSelection,
     required this.userStore,
-    required this.isLoadingMore,
+    this.onLoadMore,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // Calculate the number of pairs (each page shows a unique pair)
-    // We subtract 1 from the length to ensure we always have pairs
-    final int pairCount = (movies.length / 2).floor();
+  _HorizontalMovieScrollerState createState() => _HorizontalMovieScrollerState();
+}
+
+class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
+  // Create an internal scroll controller that's not shared with parent
+  final ScrollController _internalScrollController = ScrollController();
+  
+  @override
+  void initState() {
+    super.initState();
     
-    return PageView.builder(
-      controller: pageController,
+    // Add our own scroll listener for infinite scrolling
+    _internalScrollController.addListener(_onInternalScroll);
+  }
+  
+  @override
+  void dispose() {
+    _internalScrollController.removeListener(_onInternalScroll);
+    _internalScrollController.dispose();
+    super.dispose();
+  }
+  
+  void _onInternalScroll() {
+    // Load more movies when reaching the end (infinite scrolling)
+    if (_internalScrollController.position.pixels >= 
+        _internalScrollController.position.maxScrollExtent * 0.8 &&
+        widget.onLoadMore != null) {
+      widget.onLoadMore!();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Calculate the number of pairs we'll need to display
+    final int pairCount = (widget.movies.length / 2).ceil();
+    
+    return ListView.builder(
+      controller: _internalScrollController,
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
       itemCount: pairCount,
-      onPageChanged: (index) {
-        // Load more when approaching the end
-        if (index >= pairCount - 3) {
-          onLoadMore();
-        }
-      },
       itemBuilder: (context, index) {
         // Calculate the correct indices for each pair
-        // Each page shows a unique pair (no repeats)
         final leftIndex = index * 2;
         final rightIndex = leftIndex + 1;
         
-        // Ensure we don't go out of bounds
-        if (rightIndex < movies.length) {
-          final leftMovie = movies[leftIndex];
-          final rightMovie = movies[rightIndex];
-          
-          return _buildMoviePair(context, leftMovie, rightMovie);
-        } else {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+        // For left movie (always exists)
+        final leftMovie = widget.movies[leftIndex];
+        
+        // For right movie (may not exist for the last pair if total count is odd)
+        Movie? rightMovie;
+        if (rightIndex < widget.movies.length) {
+          rightMovie = widget.movies[rightIndex];
         }
+        
+        return _buildMoviePair(context, leftMovie, rightMovie);
       },
     );
   }
 
-  Widget _buildMoviePair(BuildContext context, Movie leftMovie, Movie rightMovie) {
-    return Row(
-      children: [
-        // Left movie card
-        Expanded(
-          child: _buildMovieCard(context, leftMovie, true),
-        ),
-        
-        // Right movie card
-        Expanded(
-          child: _buildMovieCard(context, rightMovie, false),
-        ),
-      ],
+  Widget _buildMoviePair(BuildContext context, Movie leftMovie, Movie? rightMovie) {
+    // Get screen dimensions for responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Define the width of each movie pair container
+    // Making it slightly smaller than the screen width creates a peek effect
+    final containerWidth = screenWidth * 0.95;
+    
+    return Container(
+      width: containerWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        children: [
+          // Left movie card (always present)
+          Expanded(
+            child: _buildMovieCard(context, leftMovie, true),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Right movie card (may be null for the last item if total count is odd)
+          rightMovie != null 
+              ? Expanded(
+                  child: _buildMovieCard(context, rightMovie, false),
+                )
+              : const Expanded(child: SizedBox()), // Empty container if no right movie
+        ],
+      ),
     );
   }
 
@@ -392,17 +402,12 @@ class MoviePairCarousel extends StatelessWidget {
     // Use Observer here to make sure the widget rebuilds when favoriteMovieIds changes
     return Observer(
       builder: (_) {
-        final isSelected = userStore.favoriteMovieIds.contains(movie.id);
+        final isSelected = widget.userStore.favoriteMovieIds.contains(movie.id);
         final screenHeight = MediaQuery.of(context).size.height;
         
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          margin: EdgeInsets.only(
-            left: isLeftCard ? 0.0 : 8.0,
-            right: isLeftCard ? 8.0 : 0.0,
-            top: 20.0,
-            bottom: 20.0,
-          ),
+          margin: const EdgeInsets.symmetric(vertical: 20.0),
           decoration: BoxDecoration(
             boxShadow: isSelected ? [
               BoxShadow(
@@ -416,7 +421,7 @@ class MoviePairCarousel extends StatelessWidget {
           child: MovieCard(
             movie: movie,
             isSelected: isSelected,
-            onTap: (_) => onToggleSelection(movie),
+            onTap: (_) => widget.onToggleSelection(movie),
             showTitle: false,
           ),
         );
