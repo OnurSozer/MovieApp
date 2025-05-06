@@ -368,78 +368,85 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
     final screenHeight = MediaQuery.of(context).size.height;
     
     // Define the width of each movie card container
-    // We'll make them take about 75% of screen width for better focus
     final containerWidth = screenWidth * 0.55;
     
-    // Define card height - adjust this value to make cards taller or shorter
-    final cardHeight = screenHeight * 0.35; // 35% of screen height
+    // Define base card height
+    final baseCardHeight = screenHeight * 0.35;
     
     // Define the spacing between cards
-    // Increase or decrease this value to change the distance between cards
     final cardSpacing = 1.0;
     
     // Calculate the center position of this item
-    // Add cardSpacing to create distance between each card
     final itemCenter = index * (containerWidth + cardSpacing) + (containerWidth / 2);
     
     // Calculate how far this item is from the center of the screen
     final scrollCenter = _currentScrollPosition + (screenWidth / 2);
-    final distanceFromCenter = (itemCenter - scrollCenter).abs();
     
-    // Calculate scale factor based on distance from center
-    // Items at the center have scale of 1.0, items far away have scale of 0.85
-    final scaleFactor = 1.0 - (distanceFromCenter / screenWidth).clamp(0.0, 0.15);
+    // Calculate normalized horizontal position (-1 to 1, where 0 is center)
+    final normalizedPosition = ((itemCenter - scrollCenter) / (screenWidth * 0.5)).clamp(-1.0, 1.0);
     
-    // Calculate rotation based on distance from center
-    // Items to the left rotate slightly right, items to the right rotate slightly left
-    final direction = itemCenter > scrollCenter ? -1.0 : 1.0;
-    final rotationAngle = direction * (distanceFromCenter / screenWidth).clamp(0.0, 0.05);
+    // Calculate unified curve parameters
+    final curveProgress = normalizedPosition.abs();
     
-    // Apply 3D-like transform using Matrix4
+    // Calculate z-depth - center back, edges forward
+    final maxZOffset = 50.0;
+    final zOffset = maxZOffset * (1 - curveProgress);
+    
+    // Calculate vertical offset for unified curve
+    final maxVerticalOffset = 50.0;
+    final verticalOffset = -maxVerticalOffset * curveProgress + 50;
+    
+    // Calculate scale factor - smaller in center, larger at edges
+    final minScale = 0.9;
+    final scaleFactor = minScale + ((1.0 - minScale) * curveProgress);
+    
+    // Calculate rotation to follow the curve
+    final rotationAngle = normalizedPosition * 0.35;
+    
+    // Calculate height factor - consistent with curve
+    final heightFactor = 0.5 + (0.3 * curveProgress);
+    final dynamicCardHeight = baseCardHeight * heightFactor;
+    
+    // Apply transform for unified curve effect
     final transform = Matrix4.identity()
       ..setEntry(3, 2, 0.001) // perspective
+      ..translate(0.0, verticalOffset, zOffset)
       ..scale(scaleFactor)
       ..rotateY(rotationAngle);
     
-    // Use Observer here to make sure the widget rebuilds when favoriteMovieIds changes
     return Observer(
       builder: (_) {
         final isSelected = widget.userStore.favoriteMovieIds.contains(movie.id);
         
-        // Add a slightly brighter shadow for the focused items
-        final glowOpacity = (scaleFactor - 0.85) * 6.67; // Map 0.85-1.0 scale to 0.0-1.0 opacity
-        
         return Transform(
           transform: transform,
-          alignment: Alignment.center,
+          alignment: Alignment.topCenter,
           child: Container(
             width: containerWidth,
-            // This padding controls the horizontal spacing between cards
-            // Increase the horizontal padding to create more space between cards
             padding: EdgeInsets.symmetric(horizontal: cardSpacing / 2),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(vertical: 100.0),
+              margin: const EdgeInsets.symmetric(vertical: 130.0),
               decoration: BoxDecoration(
                 boxShadow: [
-                  // Selection shadow (if selected)
                   if (isSelected)
                     BoxShadow(
                       color: Colors.redAccent.withOpacity(0.5),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
-                  // Focus glow effect based on scale factor
+                  // Enhanced shadow for depth
                   BoxShadow(
-                    color: Colors.white.withOpacity(glowOpacity * 0.3),
+                    color: Colors.black.withOpacity(0.1 + (0.2 * curveProgress)),
                     blurRadius: 15,
+                    offset: Offset(normalizedPosition * 8, 5),
                     spreadRadius: -2,
                   ),
                 ],
               ),
-              height: cardHeight, // Using our defined cardHeight
+              height: dynamicCardHeight,
               child: ClipRRect(
-                // Create a custom implementation instead of using MovieCard
+                borderRadius: BorderRadius.circular(0),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
