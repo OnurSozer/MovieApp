@@ -41,12 +41,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-fade.png
-animationslide.png
-design1.png
-design2.png
-design3.png
-imagescurved.png
-instructions1.png
-instructions2.png
