@@ -398,13 +398,12 @@ class MoviePairCarousel extends StatelessWidget {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           margin: EdgeInsets.only(
-            left: isLeftCard ? 16.0 : 8.0,
-            right: isLeftCard ? 8.0 : 16.0,
+            left: isLeftCard ? 0.0 : 8.0,
+            right: isLeftCard ? 8.0 : 0.0,
             top: 20.0,
             bottom: 20.0,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
             boxShadow: isSelected ? [
               BoxShadow(
                 color: Colors.redAccent.withOpacity(0.5),
