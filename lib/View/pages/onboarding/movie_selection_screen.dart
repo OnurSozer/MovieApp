@@ -162,7 +162,7 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
                   
                   // Don't show the subtitle text if 3 movies are selected
                   if (hasRequiredSelections) {
-                    return const SizedBox.shrink(); // Empty widget when 3 movies selected
+                    return const SizedBox(height: 23); // Same height as the text would take
                   }
                   
                   return Text(
@@ -236,7 +236,8 @@ class _MovieSelectionScreenState extends State<MovieSelectionScreen> {
                   
                   return Column(
                     children: [
-                      Expanded(
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
                         child: HorizontalMovieScroller(
                           movies: movies,
                           onToggleSelection: _toggleMovieSelection,
@@ -350,15 +351,17 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      controller: _internalScrollController,
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      itemCount: widget.movies.length,
-      itemBuilder: (context, index) {
-        final movie = widget.movies[index];
-        return _buildAnimatedMovieCard(context, movie, index);
-      },
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6, // Fixed height container
+      child: ListView.builder(
+        controller: _internalScrollController,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: widget.movies.length,
+        itemBuilder: (context, index) {
+          return _buildAnimatedMovieCard(context, widget.movies[index], index);
+        },
+      ),
     );
   }
 

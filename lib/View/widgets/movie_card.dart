@@ -171,39 +171,47 @@ class _MovieCardState extends State<MovieCard> with SingleTickerProviderStateMix
   }
   
   Widget _buildLoadingPlaceholder() {
-    return Container(
-      color: AppColors.greyDark,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.redLight,
-          strokeWidth: 2,
+    return Stack(
+      children: [
+        Container(
+          color: AppColors.greyDark,
         ),
-      ),
+        const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.redLight,
+            strokeWidth: 2,
+          ),
+        ),
+      ],
     );
   }
   
   Widget _buildErrorPlaceholder() {
-    return Container(
-      color: AppColors.greyDark,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.movie_outlined,
-              color: AppColors.white.withOpacity(0.7),
-              size: 40,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No Image',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.white.withOpacity(0.7),
-              ),
-            ),
-          ],
+    return Stack(
+      children: [
+        Container(
+          color: AppColors.greyDark,
         ),
-      ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.movie_outlined,
+                color: AppColors.white.withOpacity(0.7),
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No Image',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -353,27 +361,40 @@ class _CircularMovieCardState extends State<CircularMovieCard> with SingleTicker
   }
   
   Widget _buildLoadingPlaceholder() {
-    return Container(
-      color: AppColors.greyDark,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.redLight,
-          strokeWidth: 2,
+    return Stack(
+      children: [
+        Container(
+          color: AppColors.greyDark,
         ),
-      ),
+        const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.redLight,
+            strokeWidth: 2,
+          ),
+        ),
+      ],
     );
   }
   
   Widget _buildErrorPlaceholder() {
-    return Container(
-      color: AppColors.greyDark,
-      child: Center(
-        child: Icon(
-          Icons.movie_outlined,
-          color: AppColors.white.withOpacity(0.7),
-          size: widget.size / 2,
+    return Stack(
+      children: [
+        Container(
+          color: AppColors.greyDark,
         ),
-      ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.movie_outlined,
+                color: AppColors.white.withOpacity(0.7),
+                size: widget.size / 2,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
