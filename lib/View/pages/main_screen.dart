@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
+import 'dart:math' as math;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../Model/entities/movie.dart';
@@ -23,7 +24,9 @@ class _MainScreenState extends State<MainScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _genreScrollController = ScrollController();
   int? _selectedGenreForScroll;
+  bool _isManuallyScrolling = false;
 
   @override
   void initState() {
@@ -38,6 +41,11 @@ class _MainScreenState extends State<MainScreen> {
     
     // Fetch 9 movies for each genre
     _movieStore.fetchAllCategoryMovies();
+    
+    // Select Action genre by default
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _selectActionGenreByDefault();
+    });
   }
   
   @override
@@ -45,11 +53,65 @@ class _MainScreenState extends State<MainScreen> {
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _genreScrollController.dispose();
     super.dispose();
   }
   
   void _onScroll() {
     _movieStore.preloadNextBatchOnScroll(context, _scrollController);
+    _detectCurrentCategory();
+  }
+  
+  void _detectCurrentCategory() {
+    if (_isSearching || _movieStore.genres.isEmpty) {
+      return;
+    }
+    
+    // Get the current scroll position
+    final scrollPosition = _scrollController.position.pixels;
+    
+    // Calculate the estimated visible index based on item height
+    final itemHeight = MediaQuery.of(context).size.height * 0.67;
+    final estimatedIndex = (scrollPosition / itemHeight).floor();
+    
+    // Ensure the index is within bounds
+    if (estimatedIndex >= 0 && estimatedIndex < _movieStore.genres.length) {
+      final visibleGenreId = _movieStore.genres[estimatedIndex].id;
+      
+      // Update the selected genre if it's different from the current one
+      if (visibleGenreId != _selectedGenreForScroll) {
+        setState(() {
+          _selectedGenreForScroll = visibleGenreId;
+        });
+        
+        // Scroll the genre chips to keep the selected one visible
+        _scrollGenreChipToCenter(visibleGenreId);
+      }
+    }
+  }
+  
+  void _scrollGenreChipToCenter(int genreId) {
+    final genreIndex = _movieStore.genres.indexWhere((g) => g.id == genreId);
+    if (genreIndex >= 0 && _genreScrollController.hasClients) {
+      // Calculate the position to scroll to
+      final itemWidth = 100.0; // Approximate width of each chip
+      final spacing = 8.0;
+      final position = genreIndex * (itemWidth + spacing);
+      
+      // Get the center position
+      final screenWidth = MediaQuery.of(context).size.width;
+      final target = math.max(0, position - (screenWidth / 2) + (itemWidth / 2));
+      
+      // Only scroll if the target is not already visible
+      if (target < _genreScrollController.offset || 
+          target > (_genreScrollController.offset + screenWidth - itemWidth)) {
+        _genreScrollController.animateTo(
+          target.toDouble(),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
   }
 
   void _toggleGenreSelection(MovieGenre genre) {
@@ -91,6 +153,27 @@ class _MainScreenState extends State<MainScreen> {
         _isSearching = true;
       });
       _movieStore.searchMovies(query);
+    }
+  }
+
+  // Helper method to select Action genre by default
+  void _selectActionGenreByDefault() {
+    if (_movieStore.genres.isNotEmpty) {
+      // Find the Action genre or default to first genre
+      final actionGenre = _movieStore.genres.firstWhere(
+        (genre) => genre.name.toLowerCase() == 'action',
+        orElse: () => _movieStore.genres.first,
+      );
+      
+      // Set it as selected
+      setState(() {
+        _selectedGenreForScroll = actionGenre.id;
+      });
+      
+      // Wait a bit for the UI to be ready, then scroll to it
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _toggleGenreSelection(actionGenre);
+      });
     }
   }
 
@@ -290,6 +373,7 @@ class _MainScreenState extends State<MainScreen> {
           height: 40,
           margin: const EdgeInsets.symmetric(vertical: 8.0),
           child: ListView.separated(
+            controller: _genreScrollController,
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             itemCount: _movieStore.genres.length,
@@ -325,13 +409,26 @@ class _MainScreenState extends State<MainScreen> {
   }
   
   Widget _buildAllCategoriesSection(List<MovieGenre> genres) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      itemCount: genres.length,
-      itemBuilder: (context, index) {
-        return _buildCategorySection(genres[index]);
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) {
+        // Detect start and end of scrolling for better control
+        if (notification is ScrollStartNotification) {
+          _isManuallyScrolling = true;
+        } else if (notification is ScrollEndNotification) {
+          _isManuallyScrolling = false;
+          // Detect current category after scroll ends
+          _detectCurrentCategory();
+        }
+        return false; // Allow the notification to continue propagating
       },
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        itemCount: genres.length,
+        itemBuilder: (context, index) {
+          return _buildCategorySection(genres[index]);
+        },
+      ),
     );
   }
   
@@ -350,7 +447,6 @@ class _MainScreenState extends State<MainScreen> {
           _movieStore.fetchMoviesForGenre(genre.id);
         }
         
-            
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -360,7 +456,11 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Text(
                     genre.name,
-                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white, fontSize: 18),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.white,
+                      fontSize: 18,
+                      fontWeight: _selectedGenreForScroll == genre.id ? FontWeight.bold : FontWeight.normal,
+                    ),
                   ),
                   if (isLoading)
                     Padding(
