@@ -15,6 +15,12 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProviderStateMixin {
+  // Constants for layout calculations
+  static const double _headerHeight = 24.0;
+  static const double _featureRowHeight = 48.0;
+  static const int _watchlistIndex = 2; // 0-based index for Personalized Watchlists
+  static const int _adFreeIndex = 3; // 0-based index for Ad-Free Experience
+
   late UserStore _userStore;
   late AnimationController _fadeAnimationController;
   late Animation<double> _fadeAnimation;
@@ -22,6 +28,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
   late Animation<double> _pulseAnimation;
   late AnimationController _switchButtonController;
   late Animation<double> _switchButtonAnimation;
+  late AnimationController _markPositionController;
+  late Animation<double> _markPositionAnimation;
   
   String _selectedPlan = 'weekly'; // 'weekly', 'monthly', 'yearly'
   bool _enableFreeTrial = false;
@@ -69,6 +77,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
       parent: _switchButtonController,
       curve: Curves.easeInOut,
     );
+
+    // Initialize mark position animation - position 0.0 is top (watchlist), 1.0 is bottom (ad-free)
+    _markPositionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      value: 0.0, // Start with the mark at the top position (watchlist)
+    );
+    
+    _markPositionAnimation = CurvedAnimation(
+      parent: _markPositionController,
+      curve: Curves.easeInOut,
+    );
     
     // Start fade animation
     _fadeAnimationController.forward();
@@ -79,6 +99,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     _fadeAnimationController.dispose();
     _pulseAnimationController.dispose();
     _switchButtonController.dispose();
+    _markPositionController.dispose();
     super.dispose();
   }
   
@@ -108,6 +129,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
       MaterialPageRoute(builder: (_) => const MainScreen()),
       (route) => false,
     );
+  }
+
+  // Calculate position for feature at given index
+  double _getFeaturePosition(int index) {
+    return _headerHeight + (index * _featureRowHeight);
   }
 
   @override
@@ -333,23 +359,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.redLight, width: 1),
           ),
-          child: Column(
+          child: Stack(
             children: [
-              // PRO Header
-              Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: Text(
-                  'PRO',
-                  style: AppTextStyles.heading3,
-                  textAlign: TextAlign.center,
-                ),
+              Column(
+                children: [
+                  // PRO Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 9.0),
+                    child: Text(
+                      'PRO',
+                      style: AppTextStyles.heading3,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  
+                  // PRO checkmarks based on selected plan
+                  _buildProCheckmark(isFeatureIncluded('Daily Movie Suggestions')),
+                  _buildProCheckmark(isFeatureIncluded('AI-Powered Movie Insights')),
+                  _buildProCheckmark(isFeatureIncluded('Personalized Watchlists')),
+                  _buildProCheckmark(isFeatureIncluded('Ad-Free Experience')),
+                ],
               ),
-              
-              // PRO checkmarks based on selected plan
-              _buildProCheckmark(isFeatureIncluded('Daily Movie Suggestions')),
-              _buildProCheckmark(isFeatureIncluded('AI-Powered Movie Insights')),
-              _buildProCheckmark(isFeatureIncluded('Personalized Watchlists')),
-              _buildProCheckmark(isFeatureIncluded('Ad-Free Experience')),
+              _buildAnimatedMarks(),
             ],
           ),
         ),
@@ -383,13 +414,47 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
   }
   
   Widget _buildProCheckmark(bool isIncluded) {
+    // For yearly plan, all features are included
+    final bool showCheckmark = _selectedPlan == 'yearly' || isIncluded;
+    
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Icon(
-        isIncluded ? Icons.check_circle : Icons.cancel,
-        color: isIncluded ? Colors.green : AppColors.grey,
+        showCheckmark ? Icons.check_circle : Icons.cancel,
+        color: showCheckmark ? Colors.green : AppColors.grey,
         size: 24,
       ),
+    );
+  }
+
+  Widget _buildAnimatedMarks() {
+    return AnimatedBuilder(
+      animation: _markPositionAnimation,
+      builder: (context, child) {
+        // Only show crossmarks for non-yearly plans
+        if (_selectedPlan == 'yearly') {
+          return const SizedBox.shrink();
+        }
+        
+        // Calculate positions
+        final watchlistPosition = _getFeaturePosition(_watchlistIndex);
+        final adFreePosition = _getFeaturePosition(_adFreeIndex);
+        
+        // Interpolate between watchlist position (top) and ad-free position (bottom)
+        final double topPosition = watchlistPosition + 
+            (adFreePosition - watchlistPosition) * _markPositionAnimation.value;
+        
+        return Positioned(
+          top: topPosition + 26, // Adjust to center in the row
+          left: 0,
+          right: 0,
+          child: Icon(
+            Icons.cancel,
+            color: AppColors.grey,
+            size: 24,
+          ),
+        );
+      },
     );
   }
   
@@ -457,9 +522,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedPlan = planId;
-        });
+        if (_selectedPlan != planId) {
+          if (planId == 'monthly' && _selectedPlan == 'weekly') {
+            // Moving from weekly to monthly - animate mark from top to bottom
+            _markPositionController.animateTo(1.0);
+          } else if (planId == 'weekly' && _selectedPlan == 'monthly') {
+            // Moving from monthly to weekly - animate mark from bottom to top
+            _markPositionController.animateTo(0.0);
+          }
+          
+          setState(() {
+            _selectedPlan = planId;
+          });
+        }
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -476,6 +551,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
             ),
             child: Row(
               children: [
+                const SizedBox(width: 18),
                 Container(
                   width: 18,
                   height: 18,
@@ -580,6 +656,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
                 await _switchButtonController.reverse();
                 setState(() {
                   _enableFreeTrial = value;
+                  _selectedPlan = 'weekly'; // Default back to weekly
+                  // Reset mark to top position
+                  _markPositionController.value = 0.0;
                 });
                 _pulseAnimationController.stop();
                 _pulseAnimationController.reset();
