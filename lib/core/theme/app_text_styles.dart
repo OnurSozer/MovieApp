@@ -19,7 +19,7 @@ class AppTextStyles {
   
   static const TextStyle heading3 = TextStyle(
     fontFamily: 'Inter',
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: FontWeight.bold,
     color: AppColors.primaryText,
   );

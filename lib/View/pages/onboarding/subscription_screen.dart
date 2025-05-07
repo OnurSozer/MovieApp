@@ -95,7 +95,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: const Text(
                     'MovieHub',
-                    style: AppTextStyles.heading3,
+                    style: AppTextStyles.heading1,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -105,12 +105,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
                     opacity: _fadeAnimation,
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-                            // Comparison Table
+                            // Comparison Tabler
                             _buildComparisonTable(),
                             
                             const SizedBox(height: 24),
@@ -173,74 +173,107 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
   }
   
   Widget _buildComparisonTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.black,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(0.0),
-            child: Row(
+    // Helper function to determine if feature is included based on selected plan
+    bool isFeatureIncluded(String feature) {
+      switch (feature) {
+        case 'Daily Movie Suggestions':
+          return true; // Available in all plans
+        case 'AI-Powered Movie Insights':
+          return _selectedPlan == 'yearly'; // Only in yearly
+        case 'Personalized Watchlists':
+          return _selectedPlan == 'yearly' || _selectedPlan == 'monthly'; // In yearly and monthly
+        case 'Ad-Free Experience':
+          return _selectedPlan != 'free'; // In all paid plans
+        default:
+          return false;
+      }
+    }
+
+    return Row(
+      children: [
+        // Features and FREE column
+        Expanded(
+          flex: 4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.black,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
               children: [
-                const Expanded(flex: 3, child: SizedBox()),
-                Expanded(
-                  flex: 1,
-                  child: Column(
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+                  child: Row(
                     children: [
-                      Text(
-                        'FREE',
-                        style: AppTextStyles.bodySmall,
-                        textAlign: TextAlign.center,
+                      const Expanded(flex: 3, child: SizedBox()),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          'FREE',
+                          style: AppTextStyles.heading3,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      Text(
-                        'PRO',
-                        style: AppTextStyles.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+                
+                // Features with FREE column
+                _buildFeatureRowWithoutPro(
+                  'Daily Movie Suggestions',
+                  true,
+                ),
+                _buildFeatureRowWithoutPro(
+                  'AI-Powered Movie Insights',
+                  false,
+                ),
+                _buildFeatureRowWithoutPro(
+                  'Personalized Watchlists',
+                  false,
+                ),
+                _buildFeatureRowWithoutPro(
+                  'Ad-Free Experience',
+                  false,
                 ),
               ],
             ),
           ),
-          
-          // Features
-          _buildFeatureRow(
-            'Daily Movie Suggestions',
-            true, 
-            true,
+        ),
+        
+        // PRO column with red border
+        Container(
+          width: 80,
+          decoration: BoxDecoration(
+            color: AppColors.black,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.redLight, width: 1),
           ),
-          _buildFeatureRow(
-            'AI-Powered Movie Insights',
-            false, 
-            true,
+          child: Column(
+            children: [
+              // PRO Header
+              Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: Text(
+                  'PRO',
+                  style: AppTextStyles.heading3,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              
+              // PRO checkmarks based on selected plan
+              _buildProCheckmark(isFeatureIncluded('Daily Movie Suggestions')),
+              _buildProCheckmark(isFeatureIncluded('AI-Powered Movie Insights')),
+              _buildProCheckmark(isFeatureIncluded('Personalized Watchlists')),
+              _buildProCheckmark(isFeatureIncluded('Ad-Free Experience')),
+            ],
           ),
-          _buildFeatureRow(
-            'Personalized Watchlists',
-            false, 
-            true,
-          ),
-          _buildFeatureRow(
-            'Ad-Free Experience',
-            false, 
-            true,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
   
-  Widget _buildFeatureRow(String feature, bool isFreeIncluded, bool isProIncluded) {
+  Widget _buildFeatureRowWithoutPro(String feature, bool isFreeIncluded) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       child: Row(
@@ -257,18 +290,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
             child: Icon(
               isFreeIncluded ? Icons.check_circle : Icons.cancel,
               color: isFreeIncluded ? Colors.green : AppColors.grey,
-              size: 20,
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Icon(
-              isProIncluded ? Icons.check_circle : Icons.cancel,
-              color: isProIncluded ? Colors.green : AppColors.grey,
-              size: 20,
+              size: 24,
             ),
           ),
         ],
+      ),
+    );
+  }
+  
+  Widget _buildProCheckmark(bool isIncluded) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Icon(
+        isIncluded ? Icons.check_circle : Icons.cancel,
+        color: isIncluded ? Colors.green : AppColors.grey,
+        size: 24,
       ),
     );
   }
@@ -342,7 +378,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
         });
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -443,7 +479,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
             inactiveThumbColor: Colors.white,
             trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
             thumbIcon: MaterialStateProperty.all(
-              const Icon(Icons.circle, color: Colors.white, size: 24),
+              const Icon(Icons.circle, color: Colors.white, size: 36),
             ),
           ),
           const SizedBox(width: 10),
