@@ -389,7 +389,7 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
     final curveProgress = normalizedPosition.abs();
     
     // Calculate z-depth - center back, edges forward
-    final maxZOffset = 50.0;
+    final maxZOffset = 100.0;
     final zOffset = maxZOffset * (1 - curveProgress);
     
     // Calculate vertical offset for unified curve
@@ -401,11 +401,9 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
     final scaleFactor = minScale + ((1.0 - minScale) * curveProgress);
     
     // Calculate rotation to follow the curve
-    final rotationAngle = normalizedPosition * 0.35;
+    final rotationAngle = normalizedPosition * 0.7;
     
     // Calculate height factor - consistent with curve
-    final heightFactor = 0.5 + (0.3 * curveProgress);
-    final dynamicCardHeight = baseCardHeight * heightFactor;
     
     // Apply transform for unified curve effect
     final transform = Matrix4.identity()
@@ -444,103 +442,11 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
                   ),
                 ],
               ),
-              height: dynamicCardHeight,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(0),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Movie poster image
-                    movie.hasPoster 
-                        ? CachedNetworkImage(
-                            imageUrl: movie.fullPosterPath,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: AppColors.greyDark,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.redLight,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: AppColors.greyDark,
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.movie_outlined,
-                                      color: AppColors.white.withOpacity(0.7),
-                                      size: 40,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'No Image',
-                                      style: TextStyle(
-                                        color: AppColors.white.withOpacity(0.7),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: AppColors.greyDark,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.movie_outlined,
-                                    color: AppColors.white.withOpacity(0.7),
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No Image',
-                                    style: TextStyle(
-                                      color: AppColors.white.withOpacity(0.7),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                    
-                    // Selection overlay
-                    if (isSelected)
-                      Positioned(
-                        bottom: 8,
-                        right: 8,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: const BoxDecoration(
-                            color: AppColors.redLight,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.check,
-                              color: AppColors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    
-                    // Make the entire card tappable
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => widget.onToggleSelection(movie),
-                      ),
-                    ),
-                  ],
-                ),
+              child: MovieCard(
+                movie: movie,
+                isSelected: isSelected,
+                onTap: widget.onToggleSelection,
+                showTitle: false,
               ),
             ),
           ),

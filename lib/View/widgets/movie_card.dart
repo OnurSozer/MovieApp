@@ -73,9 +73,7 @@ class _MovieCardState extends State<MovieCard> with SingleTickerProviderStateMix
       onTap: widget.onTap != null ? () => widget.onTap!(widget.movie) : null,
       child: Container(
         decoration: BoxDecoration(
-          border: widget.isSelected
-              ? Border.all(color: AppColors.selectedItem, width: 2)
-              : null,
+          // Remove the border condition entirely
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,11 +150,20 @@ class _MovieCardState extends State<MovieCard> with SingleTickerProviderStateMix
   
   Widget _buildMovieImage() {
     if (widget.movie.hasPoster) {
-      return CachedNetworkImage(
-        imageUrl: widget.movie.fullPosterPath,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => _buildLoadingPlaceholder(),
-        errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+      // Use MediaQuery for responsive sizing
+      final width = MediaQuery.of(context).size.width * 0.55;
+      final height = MediaQuery.of(context).size.height * 0.35;
+      final curveDepth = height * 0.04; // 12% of the card height
+      return ClipPath(
+        clipper: CylinderClipper(curveDepth: curveDepth),
+        child: CachedNetworkImage(
+          imageUrl: widget.movie.fullPosterPath,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => _buildLoadingPlaceholder(),
+          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+        ),
       );
     } else {
       return _buildErrorPlaceholder();
@@ -274,9 +281,7 @@ class _CircularMovieCardState extends State<CircularMovieCard> with SingleTicker
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: widget.isSelected
-              ? Border.all(color: AppColors.selectedItem, width: 2)
-              : null,
+          // Remove the border condition entirely
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -371,4 +376,28 @@ class _CircularMovieCardState extends State<CircularMovieCard> with SingleTicker
       ),
     );
   }
+}
+
+// Custom clipper for cylinder-like curved edges
+class CylinderClipper extends CustomClipper<Path> {
+  final double curveDepth;
+  const CylinderClipper({this.curveDepth = 30}); // Default value
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    // Top inward curve (concave)
+    path.moveTo(0, 0);
+    path.quadraticBezierTo(size.width / 2, curveDepth, size.width, 0);
+    // Right side
+    path.lineTo(size.width, size.height);
+    // Bottom inward curve (concave)r
+    path.quadraticBezierTo(size.width / 2, size.height - curveDepth, 0, size.height);
+    // Left side
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CylinderClipper oldClipper) => curveDepth != oldClipper.curveDepth;
 } 
