@@ -19,7 +19,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   
-  String _selectedPlan = 'monthly'; // 'weekly', 'monthly', 'yearly'
+  String _selectedPlan = 'weekly'; // 'weekly', 'monthly', 'yearly'
   bool _enableFreeTrial = true;
 
   @override
@@ -84,87 +84,89 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: SafeArea(
+        child: Stack(
           children: [
-            Text(
-              'MovieHub',
-              style: AppTextStyles.heading3,
+            Column(
+              children: [
+                // Custom Header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: const Text(
+                    'MovieHub',
+                    style: AppTextStyles.heading3,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                // Main Content
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            // Comparison Table
+                            _buildComparisonTable(),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Free Trial Toggle
+                            _buildFreeTrialToggle(),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Subscription Plans
+                            _buildSubscriptionPlans(),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Subscribe Button
+                            PrimaryButton(
+                              text: _selectedPlan == 'free' 
+                                  ? 'Continue with Free Plan' 
+                                  : 'Unlock MovieHub PRO',
+                              onPressed: _completeOnboarding,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Terms and Conditions
+                            Center(
+                              child: Text(
+                                'By continuing, you agree to our Terms & Conditions\nand Privacy Policy',
+                                style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.redLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'PRO',
-                style: AppTextStyles.bodySmall,
+            // Close button positioned absolutely
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: _skipSubscription,
+                icon: const Icon(
+                  Icons.close,
+                  color: AppColors.grey,
+                  size: 24,
+                ),
               ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: _skipSubscription,
-            child: Text(
-              'Skip',
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
-            ),
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  // Comparison Table
-                  _buildComparisonTable(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Subscription Plans
-                  _buildSubscriptionPlans(),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Free Trial Toggle
-                  _buildFreeTrialToggle(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Subscribe Button
-                  PrimaryButton(
-                    text: _selectedPlan == 'free' 
-                        ? 'Continue with Free Plan' 
-                        : 'Unlock MovieHub PRO',
-                    onPressed: _completeOnboarding,
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Terms and Conditions
-                  Center(
-                    child: Text(
-                      'By continuing, you agree to our Terms & Conditions\nand Privacy Policy',
-                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -175,13 +177,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
       decoration: BoxDecoration(
         color: AppColors.black,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.greyDark, width: 1),
       ),
       child: Column(
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(0.0),
             child: Row(
               children: [
                 const Expanded(flex: 3, child: SizedBox()),
@@ -220,12 +221,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
             true,
           ),
           _buildFeatureRow(
-            'Personalized Watchlists',
+            'AI-Powered Movie Insights',
             false, 
             true,
           ),
           _buildFeatureRow(
-            'AI-Powered Movie Insights',
+            'Personalized Watchlists',
             false, 
             true,
           ),
@@ -242,11 +243,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
   Widget _buildFeatureRow(String feature, bool isFreeIncluded, bool isProIncluded) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AppColors.greyDark, width: 1),
-        ),
-      ),
       child: Row(
         children: [
           Expanded(
@@ -286,8 +282,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
           'weekly',
           'Weekly',
           '\$4.99',
-          'week',
-          'Billed weekly',
+          'Only \$4.99 per week',
         ),
         
         const SizedBox(height: 16),
@@ -297,8 +292,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
           'monthly',
           'Monthly',
           '\$11.99',
-          'month',
-          'Save \$8 per month',
+          'Only \$2.99 per week',
           isPopular: true,
         ),
         
@@ -309,26 +303,37 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
           'yearly',
           'Yearly',
           '\$49.99',
-          'year',
-          'Best value! Save 65%',
+          'Only \$0.96 per week',
         ),
-        
+
         const SizedBox(height: 16),
         
-        // Free Plan
-        _buildPlanOption(
-          'free',
-          'Free',
-          '\$0.00',
-          'forever',
-          'Limited features',
+        // Auto-renewal info
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.green,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Auto Renewable, Cancel Anytime',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.grey,
+                fontSize: 10,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
   
-  Widget _buildPlanOption(String planId, String title, String price, String period, String subtitle, {bool isPopular = false}) {
+  Widget _buildPlanOption(String planId, String title, String price, String subtitle, {bool isPopular = false}) {
     final isSelected = _selectedPlan == planId;
+    final period = planId == 'weekly' ? ' / week' : planId == 'monthly' ? ' / month' : ' / year';
     
     return GestureDetector(
       onTap: () {
@@ -340,10 +345,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.redLight : AppColors.greyDark,
-            width: isSelected ? 2 : 1,
+            width: 1,
           ),
         ),
         child: Row(
@@ -359,7 +364,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
               },
               activeColor: AppColors.redLight,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 0),
             
             // Plan Info
             Expanded(
@@ -397,18 +402,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
             ),
             
             // Price
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  price,
-                  style: AppTextStyles.priceText,
-                ),
-                Text(
-                  '/ $period',
-                  style: AppTextStyles.pricePeriodText,
-                ),
-              ],
+            Text(
+              '$price$period',
+              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
             ),
           ],
         ),
@@ -418,40 +414,39 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
   
   Widget _buildFreeTrialToggle() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.greyDark, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.redLight, width: 1),
       ),
       child: Row(
         children: [
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Enable Free Trial',
-                  style: AppTextStyles.bodyLarge,
-                ),
-                Text(
-                  'Try PRO features for 7 days',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
-                ),
-              ],
+            child: Text(
+              'Enable Free Trial',
+              style: AppTextStyles.bodyLarge,
             ),
           ),
+          const SizedBox(width: 10),
           Switch(
             value: _enableFreeTrial,
-            onChanged: _selectedPlan == 'free' 
-                ? null 
-                : (value) {
-                    setState(() {
-                      _enableFreeTrial = value;
-                    });
-                  },
-            activeColor: AppColors.redLight,
+            onChanged: (value) {
+              setState(() {
+                _enableFreeTrial = value;
+              });
+            },
+            activeColor: Colors.white,
+            activeTrackColor: Colors.green,
+            inactiveTrackColor: Colors.grey.shade900,
+            inactiveThumbColor: Colors.white,
+            trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
+            thumbIcon: MaterialStateProperty.all(
+              const Icon(Icons.circle, color: Colors.white, size: 24),
+            ),
           ),
+          const SizedBox(width: 10),
         ],
       ),
     );
