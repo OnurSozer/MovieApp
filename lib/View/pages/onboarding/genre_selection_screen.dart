@@ -100,18 +100,24 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  Text(
-                    'Welcome',
-                    style: AppTextStyles.heading1,
+                  Observer(
+                    builder: (_) => Text(
+                      _userStore.selectedGenreIds.length == requiredSelections
+                          ? 'Thank you! 👍'
+                          : 'Welcome',
+                      style: AppTextStyles.heading1.copyWith(
+                        color: AppTextStyles.heading1.color,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Observer(
-                    builder: (_) {
-                      return Text(
-                        'Choose your $requiredSelections favorite genres',
-                        style: AppTextStyles.bodyLarge,
-                      );
-                    },
+                    builder: (_) => _userStore.selectedGenreIds.length == requiredSelections
+                        ? const SizedBox(height: 22)
+                        : Text(
+                            'Choose your $requiredSelections favorite genres',
+                            style: AppTextStyles.bodyLarge,
+                          ),
                   ),
                   const SizedBox(height: 24),
                   Expanded(
@@ -176,7 +182,7 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                           controller: _scrollController,
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 1.2,
+                            childAspectRatio: 1.1,
                             crossAxisSpacing: 26,
                             mainAxisSpacing: 22,
                           ),
