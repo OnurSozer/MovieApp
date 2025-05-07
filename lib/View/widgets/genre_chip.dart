@@ -72,59 +72,67 @@ class GenreCircleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => onTap(genre),
-      child: Column(
-        children: [
-          SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              children: [
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.white,
-                    border: Border.all(
-                      color: isSelected ? AppColors.selectedCategory : AppColors.white,
-                      width: 2,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.white,
+          border: Border.all(
+            color: isSelected ? AppColors.selectedCategory : AppColors.white,
+            width: 2,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Center content with icon and text
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _getIconForGenre(genre.name),
+                    color: AppColors.black,
+                    size: size / 2.2,
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      genre.name,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.black,
+                        fontSize: size / 5.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  child: Center(
-                    child: Icon(
-                      _getIconForGenre(genre.name),
-                      color: AppColors.black,
-                      size: size / 2.5,
-                    ),
+                ],
+              ),
+            ),
+            // Selection indicator
+            if (isSelected)
+              Positioned(
+                bottom: size / 8,
+                right: size / 4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.redLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: AppColors.white,
+                    size: 20,
                   ),
                 ),
-                if (isSelected)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppColors.redLight,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check,
-                        color: AppColors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            genre.name,
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }
