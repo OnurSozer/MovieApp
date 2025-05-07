@@ -67,7 +67,7 @@ class _MainScreenState extends State<MainScreen> {
     final genreIndex = _movieStore.genres.indexWhere((g) => g.id == genre.id);
     if (genreIndex >= 0) {
       // Calculate approximate position to scroll to
-      const itemHeight = 300.0; // Approximate height of a genre section
+      final itemHeight = MediaQuery.of(context).size.height * 0.67; // Approximate height of a genre section
       final scrollPosition = genreIndex * itemHeight;
       
       // Scroll to the position
