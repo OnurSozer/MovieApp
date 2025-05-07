@@ -35,7 +35,13 @@ class MovieApiClient {
   }
   
   Future<Response> getMoviesByGenre(int genreId) {
-    return _dio.get('/discover/movie', queryParameters: {'with_genres': genreId});
+    // Request more movies to ensure we get at least 9 valid ones
+    // Some movies might be missing posters or have other issues
+    return _dio.get('/discover/movie', queryParameters: {
+      'with_genres': genreId,
+      'page': 1,
+      'per_page': 20 // Request more to ensure we get at least 9 good ones
+    });
   }
   
   Future<Response> getMovieGenres() {

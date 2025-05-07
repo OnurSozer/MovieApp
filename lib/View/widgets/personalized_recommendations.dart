@@ -104,10 +104,6 @@ class CircularMovieCard extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.redLight,
-            width: 2,
-          ),
           image: DecorationImage(
             image: NetworkImage(movie.hasPoster ? movie.fullPosterPath : 'https://via.placeholder.com/70x70?text=No+Image'),
             fit: BoxFit.cover,

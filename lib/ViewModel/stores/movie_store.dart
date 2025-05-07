@@ -26,6 +26,12 @@ abstract class _MovieStore with Store {
   ObservableList<Movie> favoriteMovies = ObservableList<Movie>();
   
   @observable
+  ObservableMap<int, ObservableList<Movie>> categoryMovies = ObservableMap<int, ObservableList<Movie>>();
+  
+  @observable
+  ObservableSet<int> loadingGenres = ObservableSet<int>();
+  
+  @observable
   bool isLoading = false;
   
   @observable
@@ -227,5 +233,41 @@ abstract class _MovieStore with Store {
     } catch (e) {
       print('Error saving favorites: $e');
     }
+  }
+  
+  @action
+  Future<void> fetchMoviesForGenre(int genreId) async {
+    // Skip if already loading or already have 9 movies
+    if (loadingGenres.contains(genreId) || 
+        (categoryMovies.containsKey(genreId) && categoryMovies[genreId]!.length >= 9)) {
+      return;
+    }
+    
+    loadingGenres.add(genreId);
+    
+    try {
+      final movies = await _movieRepository.getMoviesByGenre(genreId);
+      // Take exactly 9 movies or all if less than 9
+      final genreMovies = movies.take(9).toList();
+      
+      // Create an observable list and store it in the map
+      categoryMovies[genreId] = ObservableList<Movie>.of(genreMovies);
+    } catch (e) {
+      print('Error fetching movies for genre $genreId: $e');
+    } finally {
+      loadingGenres.remove(genreId);
+    }
+  }
+  
+  @action
+  Future<void> fetchAllCategoryMovies() async {
+    if (genres.isEmpty) {
+      await fetchGenres();
+    }
+    
+    // Load movies for each genre in parallel
+    await Future.wait(
+      genres.map((genre) => fetchMoviesForGenre(genre.id))
+    );
   }
 } 

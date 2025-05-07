@@ -34,6 +34,9 @@ class _MainScreenState extends State<MainScreen> {
     
     // Add scroll listener for dynamic preloading
     _scrollController.addListener(_onScroll);
+    
+    // Fetch 9 movies for each genre
+    _movieStore.fetchAllCategoryMovies();
   }
   
   @override
@@ -300,11 +303,7 @@ class _MainScreenState extends State<MainScreen> {
           );
         }
         
-        if (_movieStore.currentGenreId != null) {
-          return _buildSelectedGenreSection();
-        } else {
-          return _buildAllCategoriesSection(genres);
-        }
+        return _buildAllCategoriesSection(genres);
       },
     );
   }
@@ -331,7 +330,19 @@ class _MainScreenState extends State<MainScreen> {
           orElse: () => MovieGenre(id: 0, name: 'Unknown'),
         );
         
-        if (_movieStore.isLoading) {
+        // Check if we have movies for this genre
+        final hasMovies = _movieStore.categoryMovies.containsKey(genreId) && 
+                         _movieStore.categoryMovies[genreId]!.isNotEmpty;
+        
+        // Check if we're currently loading
+        final isLoading = _movieStore.loadingGenres.contains(genreId) || _movieStore.isLoading;
+        
+        // If we don't have movies and aren't loading, request them now
+        if (!hasMovies && !isLoading) {
+          _movieStore.fetchMoviesForGenre(genreId);
+        }
+        
+        if (isLoading && !hasMovies) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -349,12 +360,8 @@ class _MainScreenState extends State<MainScreen> {
           );
         }
         
-        // If no movies for this genre, show popular movies instead
-        final movies = _movieStore.moviesByGenre.isEmpty 
-            ? _movieStore.popularMovies 
-            : _movieStore.moviesByGenre;
-        
-        if (movies.isEmpty) {
+        // If we still don't have movies, show empty state
+        if (!hasMovies) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -374,6 +381,9 @@ class _MainScreenState extends State<MainScreen> {
             ),
           );
         }
+        
+        // We have movies, display them
+        final movies = _movieStore.categoryMovies[genreId]!;
         
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,16 +424,20 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildCategorySection(MovieGenre genre) {
     return Observer(
       builder: (_) {
-        // Get movies for this category from popular movies
-        final allMovies = _movieStore.popularMovies;
+        // Check if we have movies for this genre in our map
+        final hasMovies = _movieStore.categoryMovies.containsKey(genre.id) && 
+                         _movieStore.categoryMovies[genre.id]!.isNotEmpty;
         
-        // Filter movies for this genre
-        final moviesForCategory = allMovies.where((movie) => 
-          movie.genreIds.contains(genre.id)
-        ).take(9).toList();
+        // Check if we're currently loading this genre
+        final isLoading = _movieStore.loadingGenres.contains(genre.id);
         
-        // Skip empty categories
-        if (moviesForCategory.isEmpty) {
+        // If we don't have movies and aren't loading, fetch them now
+        if (!hasMovies && !isLoading) {
+          _movieStore.fetchMoviesForGenre(genre.id);
+        }
+        
+        // Skip empty categories that aren't loading
+        if (!hasMovies && !isLoading) {
           return const SizedBox.shrink();
         }
         
@@ -432,9 +446,25 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
-              child: Text(
-                genre.name,
-                style: AppTextStyles.heading3,
+              child: Row(
+                children: [
+                  Text(
+                    genre.name,
+                    style: AppTextStyles.heading3,
+                  ),
+                  if (isLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          color: AppColors.redLight,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             GridView.builder(
@@ -446,13 +476,17 @@ class _MainScreenState extends State<MainScreen> {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
-              itemCount: moviesForCategory.length > 9 ? 9 : moviesForCategory.length,
+              itemCount: hasMovies ? _movieStore.categoryMovies[genre.id]!.length : 0,
               itemBuilder: (context, index) {
-                final movie = moviesForCategory[index];
-                return MovieCard(
-                  movie: movie,
-                  showTitle: false,
-                );
+                if (hasMovies) {
+                  final movie = _movieStore.categoryMovies[genre.id]![index];
+                  return MovieCard(
+                    movie: movie,
+                    showTitle: false,
+                  );
+                } else {
+                  return Container(); // This shouldn't render as itemCount is 0
+                }
               },
             ),
             const SizedBox(height: 16),
