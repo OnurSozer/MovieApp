@@ -110,6 +110,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     // Set subscription status based on selection
     await _userStore.updateSubscription(_selectedPlan == 'free' ? 'free' : 'premium');
     
+    // Ensure animations are reset
+    _markPositionController.value = _selectedPlan == 'monthly' ? 1.0 : 0.0;
+    
     // Navigate to main screen
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -122,6 +125,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     // Mark onboarding as completed with free plan
     await _userStore.completeOnboarding();
     await _userStore.updateSubscription('free');
+    
+    // Ensure animations are reset
+    _markPositionController.value = 0.0;
     
     // Navigate to main screen
     if (!mounted) return;
@@ -590,6 +596,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
           // Track previous plan to handle animation
           final String previousPlan = _selectedPlan;
           
+          // If enabling yearly plan, disable free trial toggle if it was on
+          if (planId == 'yearly' && _enableFreeTrial) {
+            setState(() {
+              _enableFreeTrial = false;
+            });
+          }
+          
           setState(() {
             _selectedPlan = planId;
           });
@@ -715,7 +728,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
             value: _enableFreeTrial,
             onChanged: (value) async {
               if (value) {
-                // Turning ON free trial
+                // Turning ON free trial, going to yearly plan
                 setState(() {
                   _enableFreeTrial = value;
                   _selectedPlan = 'yearly';
@@ -724,14 +737,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
               } else {
                 // Turning OFF free trial
                 await _switchButtonController.reverse();
+                
+                final String previousPlan = _selectedPlan; // Should be 'yearly'
+                
                 setState(() {
                   _enableFreeTrial = value;
                   _selectedPlan = 'weekly'; // Default back to weekly
                 });
+                
+                // Reset animation and then animate to proper position
+                // When going from yearly to weekly, mark should be at the top
+                _markPositionController.value = 0.0;
+                
                 _pulseAnimationController.stop();
                 _pulseAnimationController.reset();
-                // Reset animation and then animate to proper position
-                _markPositionController.value = 0.0;
                 await _switchButtonController.forward();
               }
             },
