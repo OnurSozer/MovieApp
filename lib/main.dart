@@ -9,6 +9,7 @@ import 'Model/repositories/movie_repository_impl.dart';
 import 'Model/repositories/movie_repository.dart';
 import 'View/pages/splash_screen.dart';
 import 'ViewModel/stores/movie_store.dart';
+import 'ViewModel/stores/recommendation_store.dart';
 import 'ViewModel/stores/user_store.dart';
 
 // Get instance of service locator
@@ -53,6 +54,14 @@ Future<void> setupDependencies() async {
   
   getIt.registerSingleton<UserStore>(
     UserStore(getIt<UserPreferences>()),
+  );
+  
+  // Register recommendation store (depends on movie store and user store)
+  getIt.registerSingleton<RecommendationStore>(
+    RecommendationStore(
+      movieStore: getIt<MovieStore>(),
+      userStore: getIt<UserStore>(),
+    ),
   );
 }
 

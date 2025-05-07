@@ -8,6 +8,7 @@ import '../../ViewModel/stores/movie_store.dart';
 import '../../ViewModel/stores/user_store.dart';
 import '../widgets/genre_chip.dart';
 import '../widgets/movie_card.dart';
+import '../widgets/personalized_recommendations.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -91,10 +92,11 @@ class _MainScreenState extends State<MainScreen> {
                     style: AppTextStyles.heading1,
                   ),
                   const SizedBox(width: 8),
-                  const Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 20,
+                  const Text(
+                    '⭐',
+                    style: TextStyle(
+                      fontSize: 20,
+                    ),
                   ),
                 ],
               ),
@@ -103,9 +105,38 @@ class _MainScreenState extends State<MainScreen> {
             // Suggested movies in circular format (For You section)
             _buildForYouMovies(),
             
-            // Search bar
+            // Divider between recommended films and Movies section
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
+              child: Container(
+                height: 1,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+            
+            // Movies section
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0, bottom: 8.0),
+              child: Row(
+                children: [
+                  Text(
+                    'Movies',
+                    style: AppTextStyles.heading1,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '🎬',
+                    style: TextStyle(
+                      fontSize: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Search bar moved above genre chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -124,7 +155,7 @@ class _MainScreenState extends State<MainScreen> {
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
@@ -136,25 +167,6 @@ class _MainScreenState extends State<MainScreen> {
                   color: AppColors.black,
                 ),
                 onChanged: _handleSearch,
-              ),
-            ),
-            
-            // Movies section
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0, bottom: 8.0),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.movie_outlined,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Movies',
-                    style: AppTextStyles.heading2,
-                  ),
-                ],
               ),
             ),
             
@@ -238,45 +250,11 @@ class _MainScreenState extends State<MainScreen> {
           );
         }
         
-        // Try to use user's selected genres from onboarding if available
-        List<Movie> suggestedMovies;
-        
-        if (_userStore.selectedGenreIds.isNotEmpty) {
-          // Filter movies that match user's selected genres
-          suggestedMovies = _movieStore.popularMovies
-              .where((movie) => movie.genreIds
-                  .any((genreId) => _userStore.selectedGenreIds.contains(genreId)))
-              .take(10)
-              .toList();
-          
-          // If no matches found, fallback to popular movies
-          if (suggestedMovies.isEmpty) {
-            suggestedMovies = _movieStore.popularMovies.take(10).toList();
-          }
-        } else {
-          // No user preferences, use popular movies
-          suggestedMovies = _movieStore.popularMovies.take(10).toList();
-        }
-        
-        return Container(
-          height: 90,
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: suggestedMovies.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final movie = suggestedMovies[index];
-              return CircularMovieCard(
-                movie: movie,
-                size: 70,
-                onTap: (selectedMovie) {
-                  // Handle circular movie tap
-                },
-              );
-            },
-          ),
+        return PersonalizedRecommendations(
+          onMovieTap: (selectedMovie) {
+            // Handle movie tap - navigate to detail screen
+            // TODO: Implement navigation to movie detail screen
+          },
         );
       },
     );
