@@ -368,13 +368,13 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
     final screenHeight = MediaQuery.of(context).size.height;
     
     // Define the width of each movie card container
-    final containerWidth = screenWidth * 0.55;
+    final containerWidth = screenWidth * 0.5;
     
     // Define base card height
     final baseCardHeight = screenHeight * 0.35;
     
     // Define the spacing between cards
-    final cardSpacing = 1.0;
+    final cardSpacing = 0.0;
     
     // Calculate the center position of this item
     final itemCenter = index * (containerWidth + cardSpacing) + (containerWidth / 2);
