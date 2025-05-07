@@ -136,6 +136,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     return _headerHeight + (index * _featureRowHeight);
   }
 
+  // Helper function to determine if feature is included based on selected plan
+  bool isFeatureIncluded(String feature) {
+    switch (feature) {
+      case 'Daily Movie Suggestions':
+        return _selectedPlan != 'free'; // Available in all paid plans
+      case 'AI-Powered Movie Insights':
+        return _selectedPlan != 'free'; // Available in all paid plans
+      case 'Personalized Watchlists':
+        return _selectedPlan == 'monthly' || _selectedPlan == 'yearly'; // Only in monthly and yearly
+      case 'Ad-Free Experience':
+        return _selectedPlan == 'yearly'; // Only in yearly plan
+      default:
+        return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -283,22 +299,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
   }
   
   Widget _buildComparisonTable() {
-    // Helper function to determine if feature is included based on selected plan
-    bool isFeatureIncluded(String feature) {
-      switch (feature) {
-        case 'Daily Movie Suggestions':
-          return _selectedPlan != 'free'; // Available in all paid plans
-        case 'AI-Powered Movie Insights':
-          return _selectedPlan != 'free'; // Available in all paid plans
-        case 'Personalized Watchlists':
-          return _selectedPlan == 'monthly' || _selectedPlan == 'yearly'; // Only in monthly and yearly
-        case 'Ad-Free Experience':
-          return _selectedPlan == 'yearly'; // Only in yearly plan
-        default:
-          return false;
-      }
-    }
-
     return Row(
       children: [
         // Features and FREE column
@@ -415,7 +415,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
   
   Widget _buildProCheckmark(bool isIncluded) {
     // For yearly plan, all features are included
-    final bool showCheckmark = _selectedPlan == 'yearly' || isIncluded;
+    final bool showCheckmark = isIncluded || _selectedPlan == 'yearly';
+    
+    // Only hide static icons for the specific positions that will have animated marks
+    // For monthly plan, Personalized Watchlists are included
+    final bool isWatchlistRow = _featureRowHeight * _watchlistIndex == _getFeaturePosition(_watchlistIndex);
+    final bool isAdFreeRow = _featureRowHeight * _adFreeIndex == _getFeaturePosition(_adFreeIndex);
+    
+    // Skip rendering for positions that will be shown by the animated mark
+    if (_selectedPlan == 'weekly' && isWatchlistRow && !isIncluded) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: const SizedBox(width: 24, height: 24), // Placeholder of the same size
+      );
+    }
+    
+    // Skip rendering for ad-free row which always has a crossmark when not yearly
+    if (_selectedPlan != 'yearly' && isAdFreeRow && !isIncluded) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: const SizedBox(width: 24, height: 24), // Placeholder of the same size
+      );
+    }
     
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -431,7 +452,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     return AnimatedBuilder(
       animation: _markPositionAnimation,
       builder: (context, child) {
-        // Only show crossmarks for non-yearly plans
+        // Do not show marks for yearly plan
         if (_selectedPlan == 'yearly') {
           return const SizedBox.shrink();
         }
@@ -440,18 +461,61 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
         final watchlistPosition = _getFeaturePosition(_watchlistIndex);
         final adFreePosition = _getFeaturePosition(_adFreeIndex);
         
-        // Interpolate between watchlist position (top) and ad-free position (bottom)
+        // Interpolate position for animated mark
         final double topPosition = watchlistPosition + 
             (adFreePosition - watchlistPosition) * _markPositionAnimation.value;
         
-        return Positioned(
-          top: topPosition + 26, // Adjust to center in the row
-          left: 0,
-          right: 0,
-          child: Icon(
-            Icons.cancel,
-            color: AppColors.grey,
-            size: 24,
+        // For monthly plan, Personalized Watchlists are included (no crossmark)
+        // Only Ad-Free should have a crossmark
+        final bool showAnimatedMark = _selectedPlan == 'weekly' || 
+                                     (_selectedPlan == 'monthly' && _markPositionAnimation.value > 0.5);
+        
+        // Using a Container with specific dimensions to fix the layout issue
+        return SizedBox(
+          width: double.infinity,
+          height: adFreePosition + 60, // Make sure it's tall enough to contain both positions
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Only show animated mark when appropriate
+              if (showAnimatedMark)
+                Positioned(
+                  top: topPosition + 26,
+                  left: 0,
+                  right: 0,
+                  child: const Icon(
+                    Icons.cancel,
+                    color: AppColors.grey,
+                    size: 24,
+                  ),
+                ),
+              
+              // For weekly plan, always show a mark at ad-free position when not being animated
+              if (_selectedPlan == 'weekly' && _markPositionAnimation.value < 0.05)
+                Positioned(
+                  top: adFreePosition + 26,
+                  left: 0,
+                  right: 0,
+                  child: const Icon(
+                    Icons.cancel,
+                    color: AppColors.grey,
+                    size: 24,
+                  ),
+                ),
+              
+              // Monthly plan - only show crossmark for Ad-Free Experience, not for Watchlists
+              if (_selectedPlan == 'monthly')
+                Positioned(
+                  top: adFreePosition + 26, // Position at ad-free row
+                  left: 0,
+                  right: 0,
+                  child: const Icon(
+                    Icons.cancel,
+                    color: AppColors.grey,
+                    size: 24,
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -523,17 +587,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
     return GestureDetector(
       onTap: () {
         if (_selectedPlan != planId) {
-          if (planId == 'monthly' && _selectedPlan == 'weekly') {
-            // Moving from weekly to monthly - animate mark from top to bottom
-            _markPositionController.animateTo(1.0);
-          } else if (planId == 'weekly' && _selectedPlan == 'monthly') {
-            // Moving from monthly to weekly - animate mark from bottom to top
-            _markPositionController.animateTo(0.0);
-          }
+          // Track previous plan to handle animation
+          final String previousPlan = _selectedPlan;
           
           setState(() {
             _selectedPlan = planId;
           });
+          
+          // Handle animated mark position
+          if (planId == 'monthly' && (previousPlan == 'weekly' || previousPlan == 'yearly')) {
+            // Moving to monthly - animate mark to bottom position
+            _markPositionController.animateTo(1.0);
+          } 
+          else if (planId == 'weekly' && (previousPlan == 'monthly' || previousPlan == 'yearly')) {
+            // Moving to weekly - animate mark to top position
+            _markPositionController.animateTo(0.0);
+          }
+          // When moving to yearly, the mark disappears (handled in _buildAnimatedMarks)
         }
       },
       child: Stack(
@@ -657,11 +727,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProv
                 setState(() {
                   _enableFreeTrial = value;
                   _selectedPlan = 'weekly'; // Default back to weekly
-                  // Reset mark to top position
-                  _markPositionController.value = 0.0;
                 });
                 _pulseAnimationController.stop();
                 _pulseAnimationController.reset();
+                // Reset animation and then animate to proper position
+                _markPositionController.value = 0.0;
                 await _switchButtonController.forward();
               }
             },
