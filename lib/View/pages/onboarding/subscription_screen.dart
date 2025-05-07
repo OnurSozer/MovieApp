@@ -14,13 +14,17 @@ class SubscriptionScreen extends StatefulWidget {
   _SubscriptionScreenState createState() => _SubscriptionScreenState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTickerProviderStateMixin {
+class _SubscriptionScreenState extends State<SubscriptionScreen> with TickerProviderStateMixin {
   late UserStore _userStore;
-  late AnimationController _animationController;
+  late AnimationController _fadeAnimationController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _pulseAnimationController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _switchButtonController;
+  late Animation<double> _switchButtonAnimation;
   
   String _selectedPlan = 'weekly'; // 'weekly', 'monthly', 'yearly'
-  bool _enableFreeTrial = true;
+  bool _enableFreeTrial = false;
 
   @override
   void initState() {
@@ -29,26 +33,52 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
     // Get store from dependency injection
     _userStore = GetIt.instance<UserStore>();
     
-    // Initialize animation controller
-    _animationController = AnimationController(
+    // Initialize fade animation
+    _fadeAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
     
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _animationController,
+        parent: _fadeAnimationController,
         curve: Curves.easeIn,
       ),
     );
     
-    // Start animation
-    _animationController.forward();
+    // Initialize pulse animation
+    _pulseAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(
+        parent: _pulseAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Initialize switch button animation
+    _switchButtonController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    )..forward(); // Start at fully visible
+    
+    _switchButtonAnimation = CurvedAnimation(
+      parent: _switchButtonController,
+      curve: Curves.easeInOut,
+    );
+    
+    // Start fade animation
+    _fadeAnimationController.forward();
   }
   
   @override
   void dispose() {
-    _animationController.dispose();
+    _fadeAnimationController.dispose();
+    _pulseAnimationController.dispose();
+    _switchButtonController.dispose();
     super.dispose();
   }
   
@@ -92,7 +122,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
                 // Custom Header
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 2),
                   child: const Text(
                     'MovieHub',
                     style: AppTextStyles.heading1,
@@ -123,25 +153,79 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
                             // Subscription Plans
                             _buildSubscriptionPlans(),
                             
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 8),
                             
                             // Subscribe Button
-                            PrimaryButton(
-                              text: _selectedPlan == 'free' 
-                                  ? 'Continue with Free Plan' 
-                                  : 'Unlock MovieHub PRO',
-                              onPressed: _completeOnboarding,
+                            AnimatedBuilder(
+                              animation: _pulseAnimation,
+                              builder: (context, child) {
+                                return Transform(
+                                  transform: Matrix4.identity()
+                                    ..scale(
+                                      _enableFreeTrial ? _pulseAnimation.value : 1.0,
+                                      1.0,
+                                      1.0,
+                                    ),
+                                  alignment: Alignment.center,
+                                  child: AnimatedBuilder(
+                                    animation: _switchButtonAnimation,
+                                    builder: (context, child) {
+                                      return Opacity(
+                                        opacity: _switchButtonController.value,
+                                        child: PrimaryButton(
+                                          text: _enableFreeTrial
+                                              ? '3 Days Free\nNo Payment Now'
+                                              : 'Unlock MovieHub PRO',
+                                          onPressed: _completeOnboarding,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
                             ),
                             
-                            const SizedBox(height: 16),
-                            
                             // Terms and Conditions
-                            Center(
-                              child: Text(
-                                'By continuing, you agree to our Terms & Conditions\nand Privacy Policy',
-                                style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
-                                textAlign: TextAlign.center,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    // Handle Terms of Use
+                                  },
+                                  child: Text(
+                                    'Terms of Use',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.grey,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    // Handle Restore Purchase
+                                  },
+                                  child: Text(
+                                    'Restore Purchase',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.grey,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    // Handle Privacy Policy
+                                  },
+                                  child: Text(
+                                    'Privacy Policy',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.grey,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -153,8 +237,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
             ),
             // Close button positioned absolutely
             Positioned(
-              top: 4,
-              right: 4,
+              top: -15,
+              right: 0,
               child: IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -177,13 +261,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
     bool isFeatureIncluded(String feature) {
       switch (feature) {
         case 'Daily Movie Suggestions':
-          return true; // Available in all plans
+          return _selectedPlan != 'free'; // Available in all paid plans
         case 'AI-Powered Movie Insights':
-          return _selectedPlan == 'yearly'; // Only in yearly
+          return _selectedPlan != 'free'; // Available in all paid plans
         case 'Personalized Watchlists':
-          return _selectedPlan == 'yearly' || _selectedPlan == 'monthly'; // In yearly and monthly
+          return _selectedPlan == 'monthly' || _selectedPlan == 'yearly'; // Only in monthly and yearly
         case 'Ad-Free Experience':
-          return _selectedPlan != 'free'; // In all paid plans
+          return _selectedPlan == 'yearly'; // Only in yearly plan
         default:
           return false;
       }
@@ -243,7 +327,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
         
         // PRO column with red border
         Container(
-          width: 80,
+          width: 60,
           decoration: BoxDecoration(
             color: AppColors.black,
             borderRadius: BorderRadius.circular(12),
@@ -317,41 +401,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
         _buildPlanOption(
           'weekly',
           'Weekly',
-          '\$4.99',
-          'Only \$4.99 per week',
+          '\$4,99',
+          'Only \$4,99 per week',
         ),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         
         // Monthly Plan
         _buildPlanOption(
           'monthly',
           'Monthly',
-          '\$11.99',
-          'Only \$2.99 per week',
-          isPopular: true,
+          '\$11,99',
+          'Only \$2,99 per week',
         ),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         
         // Yearly Plan
         _buildPlanOption(
           'yearly',
           'Yearly',
-          '\$49.99',
-          'Only \$0.96 per week',
+          '\$49,99',
+          'Only \$0,96 per week',
+          isPopular: true,
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         
         // Auto-renewal info
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
-              Icons.check_circle_outline,
+              Icons.security,
               color: Colors.green,
-              size: 14,
+              size: 18,
             ),
             const SizedBox(width: 4),
             Text(
@@ -377,73 +461,88 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
           _selectedPlan = planId;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.redLight : AppColors.greyDark,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Radio Button
-            Radio(
-              value: planId,
-              groupValue: _selectedPlan,
-              onChanged: (value) {
-                setState(() {
-                  _selectedPlan = value as String;
-                });
-              },
-              activeColor: AppColors.redLight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? AppColors.redLight : AppColors.greyDark,
+                width: 1,
+              ),
             ),
-            const SizedBox(width: 0),
-            
-            // Plan Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Row(
+              children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? AppColors.redLight : AppColors.greyDark,
+                      width: 2,
+                    ),
+                    color: isSelected ? AppColors.redLight : Colors.transparent,
+                  ),
+                  child: isSelected
+                    ? const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 14,
+                      )
+                    : null,
+                ),
+                
+                const SizedBox(width: 18),
+                
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: AppTextStyles.bodyLarge,
+                        style: AppTextStyles.heading3,
                       ),
-                      if (isPopular) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.redLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'BEST VALUE',
-                            style: AppTextStyles.bodySmall.copyWith(fontSize: 10),
-                          ),
-                        ),
-                      ]
+                      Text(
+                        subtitle,
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.greyDark),
+                      ),
                     ],
                   ),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
+                ),
+                
+                Text(
+                  '$price$period',
+                  style: AppTextStyles.heading3.copyWith(color: AppColors.white),
+                ),
+
+                const SizedBox(width: 12),
+              ],
+            ),
+          ),
+          if (isPopular)
+            Positioned(
+              top: -12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.redLight,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ],
+                  child: Text(
+                    'Best Value',
+                    style: AppTextStyles.heading3.copyWith(fontSize: 12),
+                  ),
+                ),
               ),
             ),
-            
-            // Price
-            Text(
-              '$price$period',
-              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -458,20 +557,34 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
       ),
       child: Row(
         children: [
-          const SizedBox(width: 10),
+          const SizedBox(width: 20),
           Expanded(
             child: Text(
               'Enable Free Trial',
-              style: AppTextStyles.bodyLarge,
+              style: AppTextStyles.heading3,
             ),
           ),
           const SizedBox(width: 10),
           Switch(
             value: _enableFreeTrial,
-            onChanged: (value) {
-              setState(() {
-                _enableFreeTrial = value;
-              });
+            onChanged: (value) async {
+              if (value) {
+                // Turning ON free trial
+                setState(() {
+                  _enableFreeTrial = value;
+                  _selectedPlan = 'yearly';
+                });
+                _pulseAnimationController.repeat(reverse: true);
+              } else {
+                // Turning OFF free trial
+                await _switchButtonController.reverse();
+                setState(() {
+                  _enableFreeTrial = value;
+                });
+                _pulseAnimationController.stop();
+                _pulseAnimationController.reset();
+                await _switchButtonController.forward();
+              }
             },
             activeColor: Colors.white,
             activeTrackColor: Colors.green,
@@ -482,7 +595,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> with SingleTick
               const Icon(Icons.circle, color: Colors.white, size: 36),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 15),
         ],
       ),
     );

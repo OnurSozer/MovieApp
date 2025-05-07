@@ -20,7 +20,7 @@ class CustomButton extends StatelessWidget {
     required this.onPressed,
     this.isPrimary = true,
     this.isFullWidth = true,
-    this.height = 50,
+    this.height = 64,
     this.padding,
     this.icon,
     this.backgroundColor,
@@ -55,7 +55,7 @@ class CustomButton extends StatelessWidget {
           foregroundColor: fgColor,
           padding: padding ?? const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
           disabledBackgroundColor: disabledBackgroundColor ?? AppColors.redDark,
@@ -69,10 +69,15 @@ class CustomButton extends StatelessWidget {
               icon!,
               const SizedBox(width: 8),
             ],
-            Text(
-              text,
-              style: AppTextStyles.buttonLarge.copyWith(
-                color: fgColor,
+            Expanded(
+              child: Center(
+                child: Text(
+                  text,
+                  style: AppTextStyles.buttonLarge.copyWith(
+                    color: fgColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ],
