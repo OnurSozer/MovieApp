@@ -9,6 +9,7 @@ class MovieCard extends StatefulWidget {
   final Function? onTap;
   final bool isSelected;
   final bool showTitle;
+  final bool curved;
 
   const MovieCard({
     Key? key,
@@ -16,6 +17,7 @@ class MovieCard extends StatefulWidget {
     this.onTap,
     this.isSelected = false,
     this.showTitle = false,
+    this.curved = false,  // Default to rectangular (not curved)
   }) : super(key: key);
 
   @override
@@ -154,17 +156,34 @@ class _MovieCardState extends State<MovieCard> with SingleTickerProviderStateMix
       final width = MediaQuery.of(context).size.width * 0.55;
       final height = MediaQuery.of(context).size.height * 0.35;
       final curveDepth = height * 0.04; // 12% of the card height
-      return ClipPath(
-        clipper: CylinderClipper(curveDepth: curveDepth),
-        child: CachedNetworkImage(
-          imageUrl: widget.movie.fullPosterPath,
-          width: width,
-          height: height,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => _buildLoadingPlaceholder(),
-          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
-        ),
-      );
+      
+      if (widget.curved) {
+        // Use curved clipper if curved is true
+        return ClipPath(
+          clipper: CylinderClipper(curveDepth: curveDepth),
+          child: CachedNetworkImage(
+            imageUrl: widget.movie.fullPosterPath,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => _buildLoadingPlaceholder(),
+            errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+          ),
+        );
+      } else {
+        // Regular rectangle without clipper
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: CachedNetworkImage(
+            imageUrl: widget.movie.fullPosterPath,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => _buildLoadingPlaceholder(),
+            errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+          ),
+        );
+      }
     } else {
       return _buildErrorPlaceholder();
     }

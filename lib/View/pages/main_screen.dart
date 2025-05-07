@@ -23,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   final ScrollController _scrollController = ScrollController();
+  int? _selectedGenreForScroll;
 
   @override
   void initState() {
@@ -52,16 +53,36 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _toggleGenreSelection(MovieGenre genre) {
-    // Set current genre or clear if already selected
-    if (_movieStore.currentGenreId == genre.id) {
-      _movieStore.currentGenreId = null;
-    } else {
-      _movieStore.currentGenreId = genre.id;
+    setState(() {
+      _selectedGenreForScroll = genre.id;
+    });
+    
+    // Only fetch if we don't already have movies for this genre
+    if (!_movieStore.categoryMovies.containsKey(genre.id) || 
+        _movieStore.categoryMovies[genre.id]!.isEmpty) {
+      _movieStore.fetchMoviesForGenre(genre.id);
+    }
+    
+    // Find the index of the genre in the list
+    final genreIndex = _movieStore.genres.indexWhere((g) => g.id == genre.id);
+    if (genreIndex >= 0) {
+      // Calculate approximate position to scroll to
+      const itemHeight = 300.0; // Approximate height of a genre section
+      final scrollPosition = genreIndex * itemHeight;
       
-      // Only fetch if we don't already have movies for this genre
-      if (_movieStore.moviesByGenre.isEmpty) {
-        _movieStore.fetchMoviesByGenre(genre.id);
-      }
+      // Scroll to the position
+      _scrollController.animateTo(
+        scrollPosition,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+      
+      // Reset the selection after scrolling (optional)
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        setState(() {
+          _selectedGenreForScroll = null;
+        });
+      });
     }
   }
 
@@ -280,7 +301,7 @@ class _MainScreenState extends State<MainScreen> {
             separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final genre = _movieStore.genres[index];
-              final isSelected = _movieStore.currentGenreId == genre.id;
+              final isSelected = _selectedGenreForScroll == genre.id;
               return GenreChip(
                 genre: genre,
                 isSelected: isSelected,
@@ -319,108 +340,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
   
-  Widget _buildSelectedGenreSection() {
-    return Observer(
-      builder: (_) {
-        final genreId = _movieStore.currentGenreId;
-        if (genreId == null) return const SizedBox.shrink();
-        
-        final genre = _movieStore.genres.firstWhere(
-          (g) => g.id == genreId,
-          orElse: () => MovieGenre(id: 0, name: 'Unknown'),
-        );
-        
-        // Check if we have movies for this genre
-        final hasMovies = _movieStore.categoryMovies.containsKey(genreId) && 
-                         _movieStore.categoryMovies[genreId]!.isNotEmpty;
-        
-        // Check if we're currently loading
-        final isLoading = _movieStore.loadingGenres.contains(genreId) || _movieStore.isLoading;
-        
-        // If we don't have movies and aren't loading, request them now
-        if (!hasMovies && !isLoading) {
-          _movieStore.fetchMoviesForGenre(genreId);
-        }
-        
-        if (isLoading && !hasMovies) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  genre.name,
-                  style: AppTextStyles.heading3,
-                ),
-                const SizedBox(height: 24),
-                const CircularProgressIndicator(
-                  color: AppColors.redLight,
-                ),
-              ],
-            ),
-          );
-        }
-        
-        // If we still don't have movies, show empty state
-        if (!hasMovies) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  genre.name,
-                  style: AppTextStyles.heading3,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'No movies found for this genre',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.grey,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        
-        // We have movies, display them
-        final movies = _movieStore.categoryMovies[genreId]!;
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                genre.name,
-                style: AppTextStyles.heading3,
-              ),
-            ),
-            Expanded(
-              child: GridView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 0.7,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: movies.length,
-                itemBuilder: (context, index) {
-                  final movie = movies[index];
-                  return MovieCard(
-                    movie: movie,
-                    showTitle: false,
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-  
   Widget _buildCategorySection(MovieGenre genre) {
     return Observer(
       builder: (_) {
@@ -436,11 +355,11 @@ class _MainScreenState extends State<MainScreen> {
           _movieStore.fetchMoviesForGenre(genre.id);
         }
         
-        // Skip empty categories that aren't loading
-        if (!hasMovies && !isLoading) {
-          return const SizedBox.shrink();
-        }
-        
+        // Calculate which color to use for the genre name
+        final textColor = _selectedGenreForScroll == genre.id 
+            ? AppColors.redLight 
+            : AppColors.white;
+            
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -450,7 +369,7 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Text(
                     genre.name,
-                    style: AppTextStyles.heading3,
+                    style: AppTextStyles.heading3.copyWith(color: textColor),
                   ),
                   if (isLoading)
                     Padding(
@@ -467,28 +386,53 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: hasMovies ? _movieStore.categoryMovies[genre.id]!.length : 0,
-              itemBuilder: (context, index) {
-                if (hasMovies) {
+            if (hasMovies)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.7,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: _movieStore.categoryMovies[genre.id]!.length,
+                itemBuilder: (context, index) {
                   final movie = _movieStore.categoryMovies[genre.id]![index];
                   return MovieCard(
                     movie: movie,
                     showTitle: false,
+                    curved: false,
                   );
-                } else {
-                  return Container(); // This shouldn't render as itemCount is 0
-                }
-              },
-            ),
+                },
+              )
+            else
+              // Show placeholder grid while loading
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.7,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: 9, // Always show 9 placeholders
+                itemBuilder: (context, index) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.greyDark,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.redLight,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 16),
           ],
         );
@@ -551,6 +495,7 @@ class _MainScreenState extends State<MainScreen> {
             return MovieCard(
               movie: movie,
               showTitle: false,
+              curved: false,
             );
           },
         );

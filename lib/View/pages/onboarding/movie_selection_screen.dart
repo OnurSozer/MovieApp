@@ -450,6 +450,7 @@ class _HorizontalMovieScrollerState extends State<HorizontalMovieScroller> {
                 isSelected: isSelected,
                 onTap: widget.onToggleSelection,
                 showTitle: false,
+                curved: true,
               ),
             ),
           ),
