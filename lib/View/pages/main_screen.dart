@@ -77,12 +77,7 @@ class _MainScreenState extends State<MainScreen> {
         curve: Curves.easeInOut,
       );
       
-      // Reset the selection after scrolling (optional)
-      Future.delayed(const Duration(milliseconds: 1000), () {
-        setState(() {
-          _selectedGenreForScroll = null;
-        });
-      });
+      // Don't reset the selection - keep it highlighted
     }
   }
 
@@ -355,21 +350,17 @@ class _MainScreenState extends State<MainScreen> {
           _movieStore.fetchMoviesForGenre(genre.id);
         }
         
-        // Calculate which color to use for the genre name
-        final textColor = _selectedGenreForScroll == genre.id 
-            ? AppColors.redLight 
-            : AppColors.white;
             
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
               child: Row(
                 children: [
                   Text(
                     genre.name,
-                    style: AppTextStyles.heading3.copyWith(color: textColor),
+                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white, fontSize: 18),
                   ),
                   if (isLoading)
                     Padding(
